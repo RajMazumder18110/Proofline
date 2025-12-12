@@ -73,7 +73,7 @@ export class OrderWorker extends EventEmitter<OrderEventMap> {
       to: payload.to,
       from: payload.from,
       erc20: payload.erc20,
-      amount: payload.value,
+      amount: BigInt(payload.value),
     });
     /// If no order found, drop the job
     if (!order) {
@@ -92,8 +92,8 @@ export class OrderWorker extends EventEmitter<OrderEventMap> {
       to: payload.to,
       from: payload.from,
       erc20: payload.erc20,
-      amount: payload.value,
-      sigTimestamp: order.sigTimestamp,
+      amount: BigInt(payload.value),
+      timestamp: order.timestamp,
     });
 
     /// Validate the signature

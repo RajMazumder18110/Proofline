@@ -1,4 +1,5 @@
 /** @notice Library imports */
+import { eq, and } from "drizzle-orm";
 /// Local imports
 import {
   OrderStatus,
@@ -7,6 +8,8 @@ import {
   type CreateOrderPayload,
   type GetOrderByPayloadParams,
 } from "@/types/order";
+import { database } from "@/database";
+import { orders } from "@/database/schemas";
 
 export class OrderDatabase {
   /// Read Methods ///
@@ -14,56 +17,49 @@ export class OrderDatabase {
    * @notice Retrieves an order by its ID.
    * @dev Fetches the order from the database using the provided ID.
    * @param orderId The ID of the order to retrieve.
-   * @returns {Promise<Order>} A promise that resolves to the found order.
+   * @returns {Promise<Order | null>} A promise that resolves to the found order.
    */
-  public async getOrderById(orderId: string): Promise<any> {}
+  public async getOrderById(orderId: number): Promise<Order | null> {
+    const order = await database.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+    });
+    return order ?? null;
+  }
 
   /**
    * @notice Retrieves an order based on the provided payload parameters.
    * @dev Fetches the order from the database matching the given criteria.
    * @param payload The parameters to identify the order.
-   * @returns {Promise<Order>} A promise that resolves to the found order.
+   * @returns {Promise<Order | null>} A promise that resolves to the found order.
    */
   public async getOrderByPayload(
     payload: GetOrderByPayloadParams
   ): Promise<Order | null> {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    return {
-      id: "jobId-1",
-      erc20: "usdt-address",
-      from: payload.from,
-      to: payload.to,
-      amount: payload.amount,
-      txHash: null,
-      signature: "signature",
-      sigTimestamp: Date.now(),
-      status: OrderStatus.PENDING,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const order = await database.query.orders.findFirst({
+      where: and(
+        eq(orders.to, payload.to),
+        eq(orders.from, payload.from),
+        eq(orders.erc20, payload.erc20),
+        eq(orders.amount, payload.amount),
+        eq(orders.status, OrderStatus.PENDING)
+      ),
+    });
+    return order ?? null;
   }
 
   /// Write Methods ///
   /**
    * @notice Creates a new order in the database.
    * @param order The order payload to create.
-   * @returns {Promise<Order>} A promise that resolves to the created order.
+   * @returns {Promise<number | null>} A promise that resolves to the created order.
    */
-  public async createOrder(order: CreateOrderPayload): Promise<Order> {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    return {
-      id: "jobId-1",
-      erc20: order.erc20,
-      from: order.from,
-      to: order.to,
-      amount: order.amount,
-      txHash: null,
-      signature: order.signature,
-      sigTimestamp: order.sigTimestamp,
-      status: OrderStatus.PENDING,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+  public async createOrder(order: CreateOrderPayload): Promise<number | null> {
+    const [newOrder] = await database
+      .insert(orders)
+      .values(order)
+      .$returningId();
+
+    return newOrder?.id ?? null;
   }
 
   /**
@@ -72,9 +68,14 @@ export class OrderDatabase {
    * @param txHash The transaction hash associated with the order completion.
    * @returns {Promise<void>} A promise that resolves when the order is marked as completed.
    */
-  public async completeOrder(orderId: string, txHash: string): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    OrderStatus.COMPLETED;
+  public async completeOrder(orderId: number, txHash: string): Promise<void> {
+    await database
+      .update(orders)
+      .set({
+        txHash: txHash,
+        status: OrderStatus.COMPLETED,
+      })
+      .where(eq(orders.id, orderId));
   }
 
   /**
@@ -84,10 +85,15 @@ export class OrderDatabase {
    * @returns {Promise<void>} A promise that resolves when the order is marked as failed.
    */
   public async failOrder(
-    orderId: string,
+    orderId: number,
     reason: OrderFailReasons
   ): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    OrderStatus.CANCELLED;
+    await database
+      .update(orders)
+      .set({
+        error: reason,
+        status: OrderStatus.CANCELLED,
+      })
+      .where(eq(orders.id, orderId));
   }
 }

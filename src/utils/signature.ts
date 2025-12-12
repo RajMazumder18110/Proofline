@@ -15,11 +15,11 @@ export const signOrder = (payload: OrderSignaturePayload): string => {
     .createHmac("sha512", HMAC_SECRET)
     .update(
       JSON.stringify({
-        to: payload.to,
-        from: payload.from,
-        erc20: payload.erc20,
-        amount: payload.amount,
-        timestamp: payload.sigTimestamp,
+        to: payload.to.toLowerCase(),
+        from: payload.from.toLowerCase(),
+        erc20: payload.erc20.toLowerCase(),
+        amount: payload.amount.toString(),
+        timestamp: payload.timestamp,
       })
     )
     .digest("hex");

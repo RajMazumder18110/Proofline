@@ -11,6 +11,19 @@ services:
     networks:
       - proofline_network
 
+  mysql:
+    image: mysql
+    container_name: proofline_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: proofline_db
+    ports:
+      - 3306:3306
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    networks:
+      - proofline_network
+
 networks:
   proofline_network:
     driver: bridge
