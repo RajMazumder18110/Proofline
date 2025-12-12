@@ -1,10 +1,11 @@
 /** @notice Library imports */
 import IORedis from "ioredis";
-import { Job, Queue } from "bullmq";
+import { Queue } from "bullmq";
 /// Local imports
 import { Queues } from "@/queues";
 import type { ERC20 } from "@/core/ERC20";
 import type { TransferEventPayload } from "@/types/erc20";
+import { defaultTransferQueueOptions } from "@/configs/default";
 
 export class ERC20TransfersQueue {
   /// Holds the instances.
@@ -21,9 +22,7 @@ export class ERC20TransfersQueue {
     this._erc20 = erc20;
     this._queue = new Queue(Queues.ERC20_TRANSFERS, {
       connection,
-      defaultJobOptions: {
-        /// TODO: Adjust attempts and backoff strategy as needed
-      },
+      defaultJobOptions: defaultTransferQueueOptions,
     });
   }
 
