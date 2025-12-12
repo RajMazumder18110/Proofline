@@ -92,8 +92,8 @@ export class ERC20 extends EventEmitter<ERC20EventMap> {
     const parsedLog = iface.parseLog(log)!;
     return {
       /// Transfer event data
-      value: parsedLog.args.value,
       to: parsedLog.args.to.toLowerCase(),
+      value: parsedLog.args.value.toString(),
       from: parsedLog.args.from.toLowerCase(),
 
       /// Additional metadata

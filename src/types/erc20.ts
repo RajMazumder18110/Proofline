@@ -10,7 +10,7 @@ export type TransferFilter = {
 export type TransferEventPayload = {
   to: string;
   from: string;
-  value: bigint;
+  value: string;
   txHash: string;
   erc20: string;
   blockNumber: number;
