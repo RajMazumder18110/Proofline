@@ -1,5 +1,6 @@
 /** @notice Local imports */
 import { orders } from "@/database/schemas";
+import type { QueueEventsListener } from "bullmq";
 
 /** @notice Types for Order module */
 export enum OrderStatus {
@@ -30,16 +31,18 @@ export type CreateOrderPayload = Pick<
   "erc20" | "from" | "to" | "amount" | "timestamp" | "signature"
 >;
 
-export type OrderEventMap = {
-  /// Worker specific events ///
-  "event.status.dropped": [jobId: string];
-  "event.status.processed": [jobId: string];
-  /// Order specific events
-  "order.status.changed": [payload: { orderId: number; status: OrderStatus }];
-  "order.status.completed": [payload: { orderId: number }];
-  "order.status.cancelled": [
-    payload: { orderId: number; reason: OrderFailReasons }
-  ];
-  /// Mandatory events
-  error: [error: Error];
+export type OrderEventPayload = {
+  orderId: number;
+  status: OrderStatus;
+  reason?: OrderFailReasons;
 };
+
+export interface OrderPublishEventPayload extends OrderEventPayload {
+  eventName: "order:progress" | "order:completed" | "order:cancelled";
+}
+
+export interface OrderEventsListener extends QueueEventsListener {
+  "order:progress": (args: OrderEventPayload, id: string) => void;
+  "order:completed": (args: OrderEventPayload, id: string) => void;
+  "order:cancelled": (args: OrderEventPayload, id: string) => void;
+}

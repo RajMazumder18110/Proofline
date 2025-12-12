@@ -27,6 +27,21 @@ export class OrderDatabase {
   }
 
   /**
+   * @notice Retrieves a pending order by its ID.
+   * @param orderId The ID of the order to retrieve.
+   * @returns {Promise<Order | null>} A promise that resolves to the found pending order.
+   */
+  public async getPendingOrderById(orderId: number): Promise<Order | null> {
+    const order = await database.query.orders.findFirst({
+      where: and(
+        eq(orders.id, orderId),
+        eq(orders.status, OrderStatus.PENDING)
+      ),
+    });
+    return order ?? null;
+  }
+
+  /**
    * @notice Retrieves an order based on the provided payload parameters.
    * @dev Fetches the order from the database matching the given criteria.
    * @param payload The parameters to identify the order.

@@ -4,7 +4,7 @@ import type { CreateOrderPayload } from "@/types/order";
 import { signOrder } from "@/utils/signature";
 
 const payload: CreateOrderPayload = {
-  erc20: "0xDBC67674c68A361A5e6cB5a198861c8CF24eCdB7",
+  erc20: "0x943a21fd14e972e48584b470FA839900E3C2D210",
   from: "0xD85E2cD257BD154B9959Bc1a25d8825645d6Bab6",
   to: "0x5c2E23698eB98cBd12dbaf100227BaF68D1e20fD",
   amount: BigInt(1000),
