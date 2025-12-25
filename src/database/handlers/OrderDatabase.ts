@@ -19,7 +19,7 @@ export class OrderDatabase {
    * @param orderId The ID of the order to retrieve.
    * @returns {Promise<Order | null>} A promise that resolves to the found order.
    */
-  public async getOrderById(orderId: number): Promise<Order | null> {
+  public async getOrderById(orderId: string): Promise<Order | null> {
     const order = await database.query.orders.findFirst({
       where: eq(orders.id, orderId),
     });
@@ -31,7 +31,7 @@ export class OrderDatabase {
    * @param orderId The ID of the order to retrieve.
    * @returns {Promise<Order | null>} A promise that resolves to the found pending order.
    */
-  public async getPendingOrderById(orderId: number): Promise<Order | null> {
+  public async getPendingOrderById(orderId: string): Promise<Order | null> {
     const order = await database.query.orders.findFirst({
       where: and(
         eq(orders.id, orderId),
@@ -66,9 +66,9 @@ export class OrderDatabase {
   /**
    * @notice Creates a new order in the database.
    * @param order The order payload to create.
-   * @returns {Promise<number | null>} A promise that resolves to the created order.
+   * @returns {Promise<string | null>} A promise that resolves to the created order.
    */
-  public async createOrder(order: CreateOrderPayload): Promise<number | null> {
+  public async createOrder(order: CreateOrderPayload): Promise<string | null> {
     const [newOrder] = await database
       .insert(orders)
       .values(order)
@@ -83,7 +83,7 @@ export class OrderDatabase {
    * @param txHash The transaction hash associated with the order completion.
    * @returns {Promise<void>} A promise that resolves when the order is marked as completed.
    */
-  public async completeOrder(orderId: number, txHash: string): Promise<void> {
+  public async completeOrder(orderId: string, txHash: string): Promise<void> {
     await database
       .update(orders)
       .set({
@@ -100,7 +100,7 @@ export class OrderDatabase {
    * @returns {Promise<void>} A promise that resolves when the order is marked as failed.
    */
   public async failOrder(
-    orderId: number,
+    orderId: string,
     reason: OrderFailReasons
   ): Promise<void> {
     await database

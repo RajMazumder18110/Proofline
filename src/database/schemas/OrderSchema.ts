@@ -2,16 +2,15 @@
 import {
   bigint,
   index,
-  int,
   mysqlEnum,
   mysqlTable,
-  serial,
   timestamp,
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
 /// Local imports
 import { OrderStatus } from "@/types/order";
+import { generateOrderId } from "@/utils/orderId";
 
 /// Enum Definitions ///
 const orderStatusEnum = mysqlEnum([
@@ -26,7 +25,7 @@ export const orders = mysqlTable(
   "orders",
   {
     /// Core fields
-    id: serial().primaryKey().autoincrement(),
+    id: varchar({ length: 255 }).primaryKey().$defaultFn(generateOrderId),
 
     /// Order fields ///
     erc20: varchar({ length: 42 }).notNull(),

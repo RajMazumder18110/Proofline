@@ -1,5 +1,5 @@
 CREATE TABLE `orders` (
-	`id` serial AUTO_INCREMENT NOT NULL,
+	`id` varchar(255) NOT NULL,
 	`erc20` varchar(42) NOT NULL,
 	`from` varchar(42) NOT NULL,
 	`to` varchar(42) NOT NULL,
