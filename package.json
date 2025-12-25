@@ -24,6 +24,8 @@
     "express": "^5.2.1",
     "http-status-codes": "^2.3.0",
     "ioredis": "^5.8.2",
-    "mysql2": "^3.15.3"
+    "mysql2": "^3.15.3",
+    "nanoid": "^5.1.6",
+    "winston": "^3.19.0"
   }
 }

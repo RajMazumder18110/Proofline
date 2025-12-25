@@ -31,8 +31,17 @@ export type CreateOrderPayload = Pick<
   "erc20" | "from" | "to" | "amount" | "timestamp" | "signature"
 >;
 
+export type SaveOrderToRedisPayload = CreateOrderPayload & {
+  orderId: string;
+};
+
+export type FindOneOrderFromRedisPayload = CreateOrderPayload & {
+  orderId: string;
+  signedSig: string;
+};
+
 export type OrderEventPayload = {
-  orderId: number;
+  orderId: string;
   status: OrderStatus;
   reason?: OrderFailReasons;
 };

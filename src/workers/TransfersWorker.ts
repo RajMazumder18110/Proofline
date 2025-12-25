@@ -3,13 +3,14 @@ import IORedis from "ioredis";
 import { Job, Worker } from "bullmq";
 /// Local imports
 import { Queues } from "@/queues";
+import { logger } from "@/configs/logger";
 import { signOrder } from "@/utils/signature";
 import type { TransferEventPayload } from "@/types/erc20";
+import type { OrderManager } from "@/services/OrderManager";
 import { OrderStatus, OrderFailReasons } from "@/types/order";
-import type { OrderDatabase } from "@/database/handlers/OrderDatabase";
 import type { OrderEventQueue } from "@/queues/OrderEventQueue";
 
-export class OrderWorker {
+export class TransfersWorker {
   /// Holds the instances.
   private _worker: Worker;
 
@@ -17,18 +18,19 @@ export class OrderWorker {
    * @notice Constructor
    * @dev Initializes the ERC20 transfers worker.
    * @param {IORedis} connection The Redis connection instance.
-   * @param {OrderDatabase} orderDatabase The order database service instance.
+   * @param {OrderManager} orderManager The order manager service instance.
+   * @param {OrderEventQueue} orderEvents The order events queue instance.
    */
   constructor(
     connection: IORedis,
-    private orderDatabase: OrderDatabase,
+    private orderManager: OrderManager,
     private orderEvents: OrderEventQueue
   ) {
     /// Worker instance
     this._worker = new Worker(
       Queues.ERC20_TRANSFERS,
       this._execute.bind(this),
-      { connection, autorun: true }
+      { connection, autorun: false, concurrency: 5 }
     );
   }
 
@@ -40,6 +42,7 @@ export class OrderWorker {
    */
   public async start(): Promise<void> {
     if (this._worker.isRunning()) return;
+    logger.info("TransfersWorker started and processing jobs.");
     await this._worker.run();
   }
 
@@ -50,6 +53,7 @@ export class OrderWorker {
    */
   public async stop(): Promise<void> {
     await this._worker.close();
+    logger.info("TransfersWorker stopped.");
   }
 
   /// Private methods ///
@@ -68,34 +72,20 @@ export class OrderWorker {
   ): Promise<void> {
     /// Extract the job data
     const payload = job.data;
-    /// Grabbing order based on payload
-    await this.orderEvents.publish({
-      eventName: "order:progress",
-      orderId: 50,
-      status: OrderStatus.VERIFYING,
-    });
-
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-    await this.orderEvents.publish({
-      eventName: "order:progress",
-      orderId: 50,
-      status: OrderStatus.COMPLETED,
-    });
-    return;
-
-    const order = await this.orderDatabase.getOrderByPayload({
+    /// Checking if order exists for the given payload
+    const order = await this.orderManager.getOrderIdByPayload({
       to: payload.to,
       from: payload.from,
       erc20: payload.erc20,
       amount: BigInt(payload.value),
     });
-    /// If no order found, drop the job
+    /// If no valid order found, drop the job
     if (!order) return;
 
     /// Process the order further
     await this.orderEvents.publish({
       eventName: "order:progress",
-      orderId: order.id,
+      orderId: order.orderId,
       status: OrderStatus.VERIFYING,
     });
 
@@ -117,29 +107,46 @@ export class OrderWorker {
       /// Emit events for status change
       await this.orderEvents.publish({
         eventName: "order:progress",
-        orderId: order.id,
+        orderId: order.orderId,
         status: OrderStatus.CANCELLED,
       });
       /// Emit events for cancellation
       await this.orderEvents.publish({
         eventName: "order:cancelled",
-        orderId: order.id,
+        orderId: order.orderId,
         status: OrderStatus.CANCELLED,
       });
+
+      /// Logging invalid signature attempt
+      logger.warn(
+        `Order ${order.orderId} cancelled due to invalid signature.`,
+        {
+          orderId: order.orderId,
+          computedSignature: sig,
+          expectedSignature: order.signature,
+        }
+      );
       return;
     }
 
     /// Mark order as completed
     await this.orderDatabase.completeOrder(order.id, payload.txHash);
+    /// Emit events for status change
     await this.orderEvents.publish({
       eventName: "order:progress",
-      orderId: order.id,
-      status: OrderStatus.CANCELLED,
+      orderId: order.orderId,
+      status: OrderStatus.COMPLETED,
     });
+    /// Emit events for completion
     await this.orderEvents.publish({
-      eventName: "order:cancelled",
-      orderId: order.id,
-      status: OrderStatus.CANCELLED,
+      eventName: "order:completed",
+      orderId: order.orderId,
+      status: OrderStatus.COMPLETED,
+    });
+    /// Logging successful order completion
+    logger.info(`Order ${order.orderId} completed successfully.`, {
+      orderId: order.orderId,
+      txHash: payload.txHash,
     });
   }
 }

@@ -1,27 +1,33 @@
 /** @notice Library imports */
-import { EventEmitter } from "events";
 import { id, type Log, type EventPayload, Interface } from "ethers";
 /// Local imports
 import type {
-  ERC20EventMap,
   TransferFilter,
   ProviderConnection,
   TransferEventPayload,
 } from "@/types/erc20";
+import type { TransferEventsQueue } from "@/queues/TransferEventsQueue";
+import { logger } from "@/configs/logger";
 
-export class ERC20 extends EventEmitter<ERC20EventMap> {
+export class ERC20Events {
   /// Holds the provider instance
   private _address: string;
   private _provider: ProviderConnection;
+  private _queue: TransferEventsQueue;
 
   /**
    * @notice Constructor
    * @dev Initializes the provider connection.
    * @param {string} address The ERC20 contract address.
    * @param {ProviderConnection} connection The provider connection instance.
+   * @param {TransferEventsQueue} queue The ERC20 transfers queue instance.
    */
-  constructor(address: string, connection: ProviderConnection) {
-    super();
+  constructor(
+    address: string,
+    connection: ProviderConnection,
+    queue: TransferEventsQueue
+  ) {
+    this._queue = queue;
     this._address = address;
     this._provider = connection;
   }
@@ -38,9 +44,11 @@ export class ERC20 extends EventEmitter<ERC20EventMap> {
       topics: [id("Transfer(address,address,uint256)")],
     };
     /// Listen erc20 `Transfer` events.
-    this._provider.on(filter, this._onTransfer.bind(this));
+    await this._provider.on(filter, this._onTransfer.bind(this));
     /// Listen for provider errors
-    this._provider.on("error", this._onError.bind(this));
+    await this._provider.on("error", this._onError.bind(this));
+    /// Log start message
+    logger.info(`ERC20Events started for contract: ${this._address}`);
   }
 
   /**
@@ -53,6 +61,8 @@ export class ERC20 extends EventEmitter<ERC20EventMap> {
     /// Clean up provider listeners
     await this._provider.removeAllListeners();
     await this._provider.destroy();
+    /// Log stop message
+    logger.info(`ERC20Events stopped for contract: ${this._address}`);
   }
 
   /// Private methods ///
@@ -61,7 +71,8 @@ export class ERC20 extends EventEmitter<ERC20EventMap> {
    * @param error The error object to handle.
    */
   private async _onError(error: Error): Promise<void> {
-    this.emit("error", error);
+    // this.emit("error", error);
+    /// TODO: Implement error handling logic
   }
 
   /**
@@ -75,8 +86,8 @@ export class ERC20 extends EventEmitter<ERC20EventMap> {
   ): Promise<void> {
     /// Preparing payload
     const payload: TransferEventPayload = this._parseLog(log);
-    /// Emit transfer event
-    this.emit("transfer", payload);
+    /// Enqueue transfer event payload
+    await this._queue.enqueue(payload);
   }
 
   /// Utility methods ///
