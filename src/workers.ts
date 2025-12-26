@@ -23,4 +23,5 @@ const transfersWorker = new TransfersWorker(
 });
 
 /// Starting all the workers ///
-await Promise.allSettled([transfersWorker.start()]);
+// await Promise.allSettled([transfersWorker.start()]);
+await orderManager.fetchSettledOrdersAndInsertToDB();

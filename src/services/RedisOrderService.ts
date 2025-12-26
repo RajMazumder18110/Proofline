@@ -219,6 +219,24 @@ export class RedisOrderService {
     return settledOrders;
   }
 
+  /**
+   * @notice Clears settled orders from Redis.
+   * @dev Removes settled orders from Redis sorted set and their associated hashes.
+   * @param orderSigs The list of order signatures to clear.
+   */
+  public async clearSettledOrders(orderSigs: string[]): Promise<void> {
+    /// Sets the Redis pipeline
+    const pipeline = this.redis.multi();
+    for (const sig of orderSigs) {
+      /// Remove from settled orders zset
+      pipeline.zrem(this.ordersSettledSetKey, sig);
+      /// Remove the order hash
+      pipeline.del(this.ordersHashKey(sig));
+    }
+    /// Execute the pipeline
+    await pipeline.exec();
+  }
+
   /// PRIVATE METHODS ///
   /**
    * @notice Generates the Redis key for an order.
