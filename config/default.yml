@@ -5,6 +5,9 @@ application:
     level: info
   server:
     port: 3000
+  shutdownSignals:
+    - SIGINT
+    - SIGTERM
 
 database:
   redisUrl: redis://localhost:6379

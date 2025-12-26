@@ -1,8 +1,9 @@
 /** @notice Local imports */
+import { configs } from "@/configs";
+import { logger } from "@/configs/logger";
 import { redisConnection } from "@/configs/redis";
 import { TransfersWorker } from "@/workers/TransfersWorker";
 import { orderEventQueue, orderManager } from "@/core/clients";
-import { logger } from "./configs/logger";
 
 /// Workers ///
 const transfersWorker = new TransfersWorker(
@@ -12,9 +13,9 @@ const transfersWorker = new TransfersWorker(
 );
 
 /// Graceful shutdown ///
-["SIGINT", "SIGTERM"].forEach((signal) => {
+configs.application.shutdownSignals.forEach((signal) => {
   process.on(signal, async () => {
-    console.warn(`\n${signal} received: closing workers...`);
+    logger.warn(`${signal} received: closing...`);
     /// Stopping all the workers ///
     await Promise.allSettled([transfersWorker.stop()]);
     logger.info("All workers stopped. Exiting process.");
@@ -23,5 +24,4 @@ const transfersWorker = new TransfersWorker(
 });
 
 /// Starting all the workers ///
-// await Promise.allSettled([transfersWorker.start()]);
-await orderManager.fetchSettledOrdersAndInsertToDB();
+await Promise.allSettled([transfersWorker.start()]);

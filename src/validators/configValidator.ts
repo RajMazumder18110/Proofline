@@ -20,6 +20,9 @@ export const configSchema = z.object({
         .min(1, "Server port must be at least 1")
         .max(65535, "Server port must be at most 65535"),
     }),
+    shutdownSignals: z
+      .array(z.enum(["SIGINT", "SIGTERM"]))
+      .nonempty("At least one shutdown signal is required"),
   }),
 
   /// Database settings
