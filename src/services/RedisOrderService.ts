@@ -98,8 +98,7 @@ export class RedisOrderService {
     /// Add zset score for settled orders
     pipeline.zadd(this.ordersSettledSetKey, Date.now(), orderSig);
     /// Remove from active orders set
-    /// TODO: UNCOMMENT AFTER TESTING
-    // pipeline.srem(this.ordersQueueSetKey, orderSig);
+    pipeline.srem(this.ordersQueueSetKey, orderSig);
     /// Execute the pipeline
     await pipeline.exec();
   }
@@ -120,8 +119,7 @@ export class RedisOrderService {
     /// Add zset score for settled orders
     pipeline.zadd(this.ordersSettledSetKey, Date.now(), orderSig);
     /// Remove from active orders set
-    /// TODO: UNCOMMENT AFTER TESTING
-    // pipeline.srem(this.ordersQueueSetKey, orderSig);
+    pipeline.srem(this.ordersQueueSetKey, orderSig);
     /// Execute the pipeline
     await pipeline.exec();
   }
