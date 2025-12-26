@@ -28,7 +28,7 @@ export type OrderSignaturePayload = Pick<
 
 export type CreateOrderPayload = Pick<
   Order,
-  "erc20" | "from" | "to" | "amount" | "timestamp" | "signature"
+  "erc20" | "from" | "to" | "amount" | "timestamp" | "signature" | "chainId"
 >;
 
 export type SaveOrderToRedisPayload = CreateOrderPayload & {
@@ -38,18 +38,25 @@ export type SaveOrderToRedisPayload = CreateOrderPayload & {
 export type FindOneOrderFromRedisPayload = CreateOrderPayload & {
   orderId: string;
   signedSig: string;
+  status: OrderStatus;
 };
+
+export enum OrderEvents {
+  ORDER_PROGRESS = "order:progress",
+  ORDER_COMPLETED = "order:completed",
+  ORDER_CANCELLED = "order:cancelled",
+}
 
 export type OrderEventPublishPayload =
   | /// Event for order progress
   {
-      eventName: "order:progress";
+      eventName: OrderEvents.ORDER_PROGRESS;
       orderId: string;
       status: OrderStatus;
     }
   /// Event for order completed
   | {
-      eventName: "order:completed";
+      eventName: OrderEvents.ORDER_COMPLETED;
       status: OrderStatus.COMPLETED;
       orderId: string;
       erc20: string;
@@ -63,14 +70,23 @@ export type OrderEventPublishPayload =
     }
   /// Event for order cancelled
   | {
-      eventName: "order:cancelled";
+      eventName: OrderEvents.ORDER_CANCELLED;
       status: OrderStatus.CANCELLED;
       orderId: string;
       reason: OrderFailReasons;
     };
 
 export interface OrderEventsListener extends QueueEventsListener {
-  "order:progress": (args: OrderEventPublishPayload, id: string) => void;
-  "order:completed": (args: OrderEventPublishPayload, id: string) => void;
-  "order:cancelled": (args: OrderEventPublishPayload, id: string) => void;
+  [OrderEvents.ORDER_PROGRESS]: (
+    args: OrderEventPublishPayload,
+    id: string
+  ) => void;
+  [OrderEvents.ORDER_COMPLETED]: (
+    args: OrderEventPublishPayload,
+    id: string
+  ) => void;
+  [OrderEvents.ORDER_CANCELLED]: (
+    args: OrderEventPublishPayload,
+    id: string
+  ) => void;
 }

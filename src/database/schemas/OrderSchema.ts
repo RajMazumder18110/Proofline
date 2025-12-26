@@ -2,6 +2,7 @@
 import {
   bigint,
   index,
+  int,
   mysqlEnum,
   mysqlTable,
   timestamp,
@@ -33,6 +34,7 @@ export const orders = mysqlTable(
     to: varchar({ length: 42 }).notNull(),
     amount: bigint({ mode: "bigint" }).notNull(),
     txHash: varchar({ length: 66 }),
+    chainId: int().notNull(),
     signature: varchar({ length: 512 }).notNull(),
     timestamp: bigint({ mode: "number", unsigned: true }).notNull(),
     error: varchar({ length: 255 }),

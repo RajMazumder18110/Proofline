@@ -25,6 +25,7 @@ export const orderInsertSchema = createInsertSchema(orders, {
   from: true,
   to: true,
   amount: true,
+  chainId: true,
   signature: true,
   timestamp: true,
 });

@@ -7,7 +7,7 @@ import { configs } from "@/configs";
 import { logger } from "@/configs/logger";
 import { signOrder } from "@/utils/signature";
 import type { OrderManager } from "@/services/OrderManager";
-import { OrderStatus, OrderFailReasons } from "@/types/order";
+import { OrderStatus, OrderFailReasons, OrderEvents } from "@/types/order";
 import type { OrderEventQueue } from "@/queues/OrderEventQueue";
 import type { TransferEventPublishPayload } from "@/types/erc20";
 
@@ -74,7 +74,7 @@ export class TransfersWorker {
     /// Extract the job data
     const payload = job.data;
     /// Checking if order exists for the given payload
-    const order = await this.orderManager.getOrderIdByPayload({
+    const order = await this.orderManager.cache.findOneByPayload({
       to: payload.to,
       from: payload.from,
       erc20: payload.erc20,
@@ -87,10 +87,15 @@ export class TransfersWorker {
     logger.info(`Processing order.`, { orderId: order.orderId });
     /// Emit events for verifying status
     await this.orderEvents.publish({
-      eventName: "order:progress",
+      eventName: OrderEvents.ORDER_PROGRESS,
       orderId: order.orderId,
       status: OrderStatus.VERIFYING,
     });
+    /// Update order status to VERIFYING in Redis
+    await this.orderManager.cache.updateOrderStatus(
+      order.signedSig,
+      OrderStatus.VERIFYING
+    );
 
     /// Prepare signature
     const sig = signOrder({
@@ -103,21 +108,20 @@ export class TransfersWorker {
 
     /// Validate the signature
     if (sig !== order.signature) {
-      /// TODO: Handle invalid signature case
-      /// Mark order as failed due to invalid signature
-      // await this.orderDatabase.failOrder(
-      //   order.id,
-      //   OrderFailReasons.INVALID_SIGNATURE
-      // );
+      /// Fail the order in Redis
+      await this.orderManager.cache.cancelOrder(
+        order.signedSig,
+        OrderFailReasons.INVALID_SIGNATURE
+      );
       /// Emit events for status change
       await this.orderEvents.publish({
-        eventName: "order:progress",
+        eventName: OrderEvents.ORDER_PROGRESS,
         orderId: order.orderId,
         status: OrderStatus.CANCELLED,
       });
       /// Emit events for cancellation
       await this.orderEvents.publish({
-        eventName: "order:cancelled",
+        eventName: OrderEvents.ORDER_CANCELLED,
         orderId: order.orderId,
         status: OrderStatus.CANCELLED,
         reason: OrderFailReasons.INVALID_SIGNATURE,
@@ -133,19 +137,19 @@ export class TransfersWorker {
     }
 
     /// Mark order as completed
-    // await this.orderDatabase.completeOrder(order.id, payload.txHash);
-    /// TODO: Update order status in order manager
-    /// Mark order as completed in order manager
-
+    await this.orderManager.cache.completeOrder(
+      order.signedSig,
+      payload.txHash
+    );
     /// Emit events for status change
     await this.orderEvents.publish({
-      eventName: "order:progress",
+      eventName: OrderEvents.ORDER_PROGRESS,
       orderId: order.orderId,
       status: OrderStatus.COMPLETED,
     });
     /// Emit events for completion
     await this.orderEvents.publish({
-      eventName: "order:completed",
+      eventName: OrderEvents.ORDER_COMPLETED,
       status: OrderStatus.COMPLETED,
       /// Order details
       orderId: order.orderId,

@@ -5,6 +5,7 @@ import type {
   CreateOrderPayload,
   FindOneOrderFromRedisPayload,
   GetOrderByPayloadParams,
+  OrderStatus,
 } from "@/types/order";
 import type { RedisOrderService } from "./RedisOrderService";
 import type { OrderDatabase } from "@/database/handlers/OrderDatabase";
@@ -20,6 +21,15 @@ export class OrderManager {
     private database: OrderDatabase,
     private redisService: RedisOrderService
   ) {}
+
+  /// GETTERS ///
+  /**
+   * @notice Gets the Redis order service instance.
+   * @returns The RedisOrderService instance.
+   */
+  public get cache(): RedisOrderService {
+    return this.redisService;
+  }
 
   /// Public methods ///
   /**
@@ -74,5 +84,17 @@ export class OrderManager {
     });
     /// Returning the created order ID
     return createdOrderId;
+  }
+
+  /**
+   * @notice Updates the status of an order in Redis.
+   * @param orderSig The order signature.
+   * @param status
+   */
+  public async updateOrderStatusRedis(
+    orderSig: string,
+    status: OrderStatus
+  ): Promise<void> {
+    await this.redisService.updateOrderStatus(orderSig, status);
   }
 }
