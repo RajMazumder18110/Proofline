@@ -1,11 +1,11 @@
 /** @notice Library imports */
 import crypto from "crypto";
 /// Local imports
-import { HMAC_SECRET } from "@/configs/env";
 import type {
   GetOrderByPayloadParams,
   OrderSignaturePayload,
 } from "@/types/order";
+import { configs } from "@/configs";
 
 /**
  * @notice Generates signature for the order.
@@ -15,7 +15,7 @@ import type {
  */
 export const signOrder = (payload: OrderSignaturePayload): string => {
   const sig = crypto
-    .createHmac("sha512", HMAC_SECRET)
+    .createHmac("sha512", configs.secrets.hmacSignatureSecret)
     .update(
       JSON.stringify({
         to: payload.to.toLowerCase(),
@@ -39,7 +39,7 @@ export const signOrderDetailsForRedis = (
   payload: GetOrderByPayloadParams
 ): string => {
   const sig = crypto
-    .createHmac("sha256", HMAC_SECRET)
+    .createHmac("sha256", configs.secrets.hmacSelfSignatureSecret)
     .update(
       JSON.stringify({
         to: payload.to.toLowerCase(),

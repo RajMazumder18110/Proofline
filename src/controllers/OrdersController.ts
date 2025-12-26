@@ -5,7 +5,7 @@ import { StatusCodes } from "http-status-codes";
 import {
   orderInsertSchema,
   findOrderByIdSchema,
-} from "@/database/validators/orders";
+} from "@/validators/orderValidators";
 import { logger } from "@/configs/logger";
 import { OrderManager } from "@/services/OrderManager";
 import type { OrderEventQueue } from "@/queues/OrderEventQueue";

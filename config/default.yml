@@ -1,0 +1,28 @@
+application:
+  name: Proofline
+  version: "1.0.0"
+  logging:
+    level: info
+  server:
+    port: 3000
+
+database:
+  redisUrl: redis://localhost:6379
+  mysqlUrl: mysql://user:password@localhost:3306/proofline_db
+
+queues:
+  defaultJobOptions:
+    attempts: 5
+    removeOnComplete: true
+    removeOnFail:
+      age: 86400
+    backoff:
+      type: exponential
+      delay: 3000
+
+workers:
+  concurrency: 10
+
+secrets:
+  hmacSignatureSecret: your_hmac_secret_key
+  hmacSelfSignatureSecret: your_self_signature_secret_key

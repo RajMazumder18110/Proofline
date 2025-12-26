@@ -3,6 +3,7 @@ import IORedis from "ioredis";
 import { Job, Worker } from "bullmq";
 /// Local imports
 import { Queues } from "@/queues";
+import { configs } from "@/configs";
 import { logger } from "@/configs/logger";
 import { signOrder } from "@/utils/signature";
 import type { TransferEventPayload } from "@/types/erc20";
@@ -30,7 +31,7 @@ export class TransfersWorker {
     this._worker = new Worker(
       Queues.ERC20_TRANSFERS,
       this._execute.bind(this),
-      { connection, autorun: false, concurrency: 5 }
+      { connection, autorun: false, concurrency: configs.workers.concurrency }
     );
   }
 

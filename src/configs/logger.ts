@@ -1,10 +1,14 @@
 /** @notice Library imports */
 import winston from "winston";
 /// Local imports
+import { configs } from "@/configs";
 
 export const logger = winston.createLogger({
-  level: "info",
-  defaultMeta: { app: "Proofline", version: "1.0.0" },
+  level: configs.application.logging.level,
+  defaultMeta: {
+    app: configs.application.name,
+    version: configs.application.version,
+  },
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(

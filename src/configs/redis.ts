@@ -2,10 +2,10 @@
 import IORedis from "ioredis";
 /// Local imports
 import { logger } from "./logger";
-import { REDIS_CONNECTION_URL } from "./env";
+import { configs } from "@/configs";
 
 /// Redis connection instance
-export const redisConnection = new IORedis(REDIS_CONNECTION_URL, {
+export const redisConnection = new IORedis(configs.database.redisUrl, {
   maxRetriesPerRequest: null,
 });
 

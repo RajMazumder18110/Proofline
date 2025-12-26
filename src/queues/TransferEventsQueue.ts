@@ -3,8 +3,8 @@ import IORedis from "ioredis";
 import { Queue } from "bullmq";
 /// Local imports
 import { Queues } from "@/queues";
+import { configs } from "@/configs";
 import type { TransferEventPayload } from "@/types/erc20";
-import { defaultTransferQueueOptions } from "@/configs/default";
 
 export class TransferEventsQueue {
   /// Holds the instances.
@@ -18,7 +18,7 @@ export class TransferEventsQueue {
   constructor(connection: IORedis) {
     this._queue = new Queue(Queues.ERC20_TRANSFERS, {
       connection,
-      defaultJobOptions: defaultTransferQueueOptions,
+      defaultJobOptions: configs.queues.defaultJobOptions,
     });
   }
 
