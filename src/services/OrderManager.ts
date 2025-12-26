@@ -33,25 +33,6 @@ export class OrderManager {
 
   /// Public methods ///
   /**
-   * @notice Retrieves an order ID by its payload details.
-   * @dev Queries the Redis store for the order ID.
-   * @param order The order payload to search for.
-   * @returns The order details if found, otherwise null.
-   */
-  public async getOrderIdByPayload(
-    order: GetOrderByPayloadParams
-  ): Promise<FindOneOrderFromRedisPayload | null> {
-    /// Retrieve the order from Redis
-    return await this.redisService.findOneByPayload({
-      to: order.to,
-      from: order.from,
-      erc20: order.erc20,
-      amount: order.amount,
-      chainId: order.chainId,
-    });
-  }
-
-  /**
    * @notice Creates a new order.
    * @dev Inserts the order into the database and saves it to Redis for processing.
    * @param order The order payload.
