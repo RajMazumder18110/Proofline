@@ -6,8 +6,8 @@ import type {
   ProviderConnection,
   TransferEventPayload,
 } from "@/types/erc20";
-import type { TransferEventsQueue } from "@/queues/TransferEventsQueue";
 import { logger } from "@/configs/logger";
+import type { TransferEventsQueue } from "@/queues/TransferEventsQueue";
 
 export class ERC20Events {
   /// Holds the provider instance

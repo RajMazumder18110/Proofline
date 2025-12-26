@@ -16,7 +16,6 @@ export class OrderManager {
    * @param database The order database handler instance.
    * @param redisService The Redis service instance.
    */
-  /// TODO: Define proper type for redisService
   constructor(
     private database: OrderDatabase,
     private redisService: RedisOrderService
