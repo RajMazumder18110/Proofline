@@ -113,6 +113,7 @@ export class TransfersWorker {
       /// Fail the order in Redis
       await this.orderManager.cache.cancelOrder(
         order.signedSig,
+        payload.txHash,
         OrderFailReasons.INVALID_SIGNATURE
       );
       /// Emit events for status change

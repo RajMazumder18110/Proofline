@@ -84,10 +84,12 @@ export class RedisOrderService {
    * @notice Marks an order as failed in Redis.
    * @dev Updates the order status to CANCELLED and sets the fail reason.
    * @param orderSig The order signature.
+   * @param txHash The transaction hash associated with the failed order.
    * @param reason The reason for order failure.
    */
   public async cancelOrder(
     orderSig: string,
+    txHash: string,
     reason: OrderFailReasons
   ): Promise<void> {
     /// Update the order status and fail reason in Redis hash
@@ -95,6 +97,7 @@ export class RedisOrderService {
     /// Updating status and fail reason
     pipeline.hset(this.ordersHashKey(orderSig), {
       status: OrderStatus.CANCELLED,
+      txHash: txHash,
       failReason: reason,
     });
     /// Add zset score for settled orders

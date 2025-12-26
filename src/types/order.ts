@@ -35,11 +35,24 @@ export type SaveOrderToRedisPayload = CreateOrderPayload & {
   orderId: string;
 };
 
-export type FindOneOrderFromRedisPayload = CreateOrderPayload & {
+export type SuccessFindOneOrderFromRedisPayload = CreateOrderPayload & {
   orderId: string;
   signedSig: string;
-  status: OrderStatus;
+  txHash: string;
+  status: OrderStatus.COMPLETED;
 };
+
+export type ErrorFindOneOrderFromRedisPayload = CreateOrderPayload & {
+  orderId: string;
+  signedSig: string;
+  txHash: string;
+  failReason: OrderFailReasons;
+  status: OrderStatus.CANCELLED;
+};
+
+export type FindOneOrderFromRedisPayload =
+  | SuccessFindOneOrderFromRedisPayload
+  | ErrorFindOneOrderFromRedisPayload;
 
 export enum OrderEvents {
   ORDER_PROGRESS = "order:progress",
