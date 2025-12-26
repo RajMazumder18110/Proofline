@@ -37,14 +37,16 @@ export type SaveOrderToRedisPayload = CreateOrderPayload & {
 
 export type SuccessFindOneOrderFromRedisPayload = CreateOrderPayload & {
   orderId: string;
-  signedSig: string;
+  baseSignature: string;
+  uniqueSignature: string;
   txHash: string;
   status: OrderStatus.COMPLETED;
 };
 
 export type ErrorFindOneOrderFromRedisPayload = CreateOrderPayload & {
   orderId: string;
-  signedSig: string;
+  baseSignature: string;
+  uniqueSignature: string;
   txHash: string;
   failReason: OrderFailReasons;
   status: OrderStatus.CANCELLED;

@@ -28,8 +28,8 @@ export class RedisOrderService {
   public async saveOrUpdateOrder(
     order: SaveOrderToRedisPayload
   ): Promise<void> {
-    /// Generate signature for the order details
-    const signedSig = signOrderDetailsForRedis({
+    /// Generate base signature (without timestamp) for indexing
+    const baseSig = signOrderDetailsForRedis({
       to: order.to,
       from: order.from,
       erc20: order.erc20,
@@ -37,12 +37,26 @@ export class RedisOrderService {
       chainId: order.chainId,
     });
 
+    /// Generate unique signature (with timestamp) for unique storage
+    const uniqueSig = signOrderDetailsForRedis(
+      {
+        to: order.to,
+        from: order.from,
+        erc20: order.erc20,
+        amount: order.amount,
+        chainId: order.chainId,
+      },
+      order.timestamp
+    );
+
     /// Sets the Redis pipeline
     const pipeline = this.redis.multi();
-    /// Save the order signature to Redis set
-    pipeline.sadd(this.ordersQueueSetKey, signedSig);
-    /// Save the order ID associated with the signature
-    pipeline.hset(this.ordersHashKey(signedSig), {
+    /// Save the unique order signature to Redis set
+    pipeline.sadd(this.ordersQueueSetKey, uniqueSig);
+    /// Index: base signature -> unique signatures
+    pipeline.sadd(this.ordersIndexKey(baseSig), uniqueSig);
+    /// Save the order ID associated with the unique signature
+    pipeline.hset(this.ordersHashKey(uniqueSig), {
       orderId: order.orderId,
       to: order.to,
       from: order.from,
@@ -53,7 +67,8 @@ export class RedisOrderService {
       amount: order.amount.toString(),
       status: OrderStatus.PENDING,
       /// Add signature for easy lookup
-      signedSig,
+      baseSignature: baseSig,
+      uniqueSignature: uniqueSig,
     });
 
     /// Execute the pipeline
@@ -63,17 +78,17 @@ export class RedisOrderService {
   /**
    * @notice Updates the status of an order in Redis.
    * @dev Updates the order status field in the Redis hash.
-   * @param orderSig The order signature.
+   * @param uniqueOrderSig The order unique signature.
    * @param status The current status of the order.
    */
   public async updateOrderStatus(
-    orderSig: string,
+    uniqueOrderSig: string,
     status: OrderStatus
   ): Promise<void> {
     /// Sets the Redis pipeline
     const pipeline = this.redis.multi();
     /// Update the order status in Redis hash
-    pipeline.hset(this.ordersHashKey(orderSig), {
+    pipeline.hset(this.ordersHashKey(uniqueOrderSig), {
       status,
     });
     /// Execute the pipeline
@@ -83,79 +98,109 @@ export class RedisOrderService {
   /**
    * @notice Marks an order as failed in Redis.
    * @dev Updates the order status to CANCELLED and sets the fail reason.
-   * @param orderSig The order signature.
+   * @param baseOrderSig The base order signature.
+   * @param uniqueOrderSig The order signature (unique signature).
    * @param txHash The transaction hash associated with the failed order.
    * @param reason The reason for order failure.
    */
   public async cancelOrder(
-    orderSig: string,
+    baseOrderSig: string,
+    uniqueOrderSig: string,
     txHash: string,
     reason: OrderFailReasons
   ): Promise<void> {
     /// Update the order status and fail reason in Redis hash
     const pipeline = this.redis.multi();
     /// Updating status and fail reason
-    pipeline.hset(this.ordersHashKey(orderSig), {
+    pipeline.hset(this.ordersHashKey(uniqueOrderSig), {
       status: OrderStatus.CANCELLED,
       txHash: txHash,
       failReason: reason,
     });
     /// Add zset score for settled orders
-    pipeline.zadd(this.ordersSettledSetKey, Date.now(), orderSig);
-    /// Remove from active orders set
-    pipeline.srem(this.ordersQueueSetKey, orderSig);
+    pipeline.zadd(this.ordersSettledSetKey, Date.now(), uniqueOrderSig);
+    /// Remove from active unique order signature
+    pipeline.srem(this.ordersQueueSetKey, uniqueOrderSig);
+    /// Remove from base signature index
+    pipeline.srem(this.ordersIndexKey(baseOrderSig), uniqueOrderSig);
     /// Execute the pipeline
     await pipeline.exec();
   }
 
   /**
    * @notice Marks an order as completed in Redis.
-   * @param orderSig The order signature.
+   * @dev Updates the order status to COMPLETED.
+   * @param baseOrderSig The base order signature.
+   * @param uniqueOrderSig The order signature (unique signature).
    * @param hash The transaction hash associated with the completed order.
    */
-  public async completeOrder(orderSig: string, hash: string): Promise<void> {
+  public async completeOrder(
+    baseOrderSig: string,
+    uniqueOrderSig: string,
+    hash: string
+  ): Promise<void> {
     /// Update the order status and fail reason in Redis hash
     const pipeline = this.redis.multi();
     /// Updating status to COMPLETED
-    pipeline.hset(this.ordersHashKey(orderSig), {
+    pipeline.hset(this.ordersHashKey(uniqueOrderSig), {
       status: OrderStatus.COMPLETED,
       txHash: hash,
     });
     /// Add zset score for settled orders
-    pipeline.zadd(this.ordersSettledSetKey, Date.now(), orderSig);
-    /// Remove from active orders set
-    pipeline.srem(this.ordersQueueSetKey, orderSig);
+    pipeline.zadd(this.ordersSettledSetKey, Date.now(), uniqueOrderSig);
+    /// Remove from active unique order signature
+    pipeline.srem(this.ordersQueueSetKey, uniqueOrderSig);
+    /// Remove from base signature index
+    pipeline.srem(this.ordersIndexKey(baseOrderSig), uniqueOrderSig);
     /// Execute the pipeline
     await pipeline.exec();
   }
 
   /**
-   * @notice Finds an order ID by its payload details.
+   * @notice Finds order IDs by its payload details.
    * @dev This is a placeholder method and should be implemented with actual Redis logic.
    * @param order The order payload to search for.
    * @returns The order details if found, otherwise null.
    */
-  public async findOneByPayload(
+  public async findByPayload(
     order: GetOrderByPayloadParams
-  ): Promise<FindOneOrderFromRedisPayload | null> {
-    /// Generate signature for the order details
-    const signedSig = signOrderDetailsForRedis({
+  ): Promise<FindOneOrderFromRedisPayload[]> {
+    /// Generate base signature (without timestamp) for lookup
+    const baseSig = signOrderDetailsForRedis({
       to: order.to,
       from: order.from,
       erc20: order.erc20,
       amount: order.amount,
       chainId: order.chainId,
     });
-    /// Check if the signature exists in Redis set
-    const exists = await this.redis.sismember(
-      this.ordersQueueSetKey,
-      signedSig
-    );
-    if (!Boolean(exists)) return null;
 
-    /// Retrieve the order ID associated with the signature
-    const orderData = await this.redis.hgetall(this.ordersHashKey(signedSig));
-    return orderData as unknown as FindOneOrderFromRedisPayload;
+    /// Get all unique signatures for this base signature
+    const uniqueSigs = await this.redis.smembers(this.ordersIndexKey(baseSig));
+    if (!Boolean(uniqueSigs.length)) return [];
+
+    /// Start pipeline to fetch all orders
+    const pipeline = this.redis.multi();
+    for (const sig of uniqueSigs) {
+      pipeline.hgetall(this.ordersHashKey(sig));
+    }
+    const results = await pipeline.exec();
+    /// In case of no results, return empty array
+    if (!results) return [];
+
+    /// Process results
+    const orders: FindOneOrderFromRedisPayload[] = [];
+    for (const [err, orderData] of results) {
+      if (!err) {
+        const data = orderData as unknown as FindOneOrderFromRedisPayload;
+        orders.push({
+          ...data,
+          amount: BigInt(data.amount),
+          chainId: Number(data.chainId),
+          timestamp: Number(data.timestamp),
+        });
+      }
+    }
+    return orders;
   }
 
   /**
@@ -165,20 +210,25 @@ export class RedisOrderService {
    * @returns True if the order exists in Redis, false otherwise.
    */
   public async isValidOrder(order: GetOrderByPayloadParams): Promise<boolean> {
-    /// Generate signature for the order details
-    const signedSig = signOrderDetailsForRedis({
+    /// Generate base signature for lookup
+    const baseSig = signOrderDetailsForRedis({
       to: order.to,
       from: order.from,
       erc20: order.erc20,
       amount: order.amount,
       chainId: order.chainId,
     });
-    /// Check if the signature exists in Redis set
-    const exists = await this.redis.sismember(
-      this.ordersQueueSetKey,
-      signedSig
-    );
-    return exists === 1;
+
+    /// Get all unique signatures for this base signature
+    const uniqueSigs = await this.redis.smembers(this.ordersIndexKey(baseSig));
+    if (uniqueSigs.length === 0) return false;
+
+    /// Check if any of them exist in the active orders set
+    for (const sig of uniqueSigs) {
+      const exists = await this.redis.sismember(this.ordersQueueSetKey, sig);
+      if (exists === 1) return true;
+    }
+    return false;
   }
 
   /**
@@ -225,16 +275,17 @@ export class RedisOrderService {
   /**
    * @notice Clears settled orders from Redis.
    * @dev Removes settled orders from Redis sorted set and their associated hashes.
-   * @param orderSigs The list of order signatures to clear.
+   * @param signatures The list of order signatures (unique signatures) to clear.
    */
-  public async clearSettledOrders(orderSigs: string[]): Promise<void> {
+  public async clearSettledOrders(signatures: string[]): Promise<void> {
     /// Sets the Redis pipeline
     const pipeline = this.redis.multi();
-    for (const sig of orderSigs) {
+
+    for (const uniqueSignature of signatures) {
       /// Remove from settled orders zset
-      pipeline.zrem(this.ordersSettledSetKey, sig);
+      pipeline.zrem(this.ordersSettledSetKey, uniqueSignature);
       /// Remove the order hash
-      pipeline.del(this.ordersHashKey(sig));
+      pipeline.del(this.ordersHashKey(uniqueSignature));
     }
     /// Execute the pipeline
     await pipeline.exec();
@@ -264,5 +315,14 @@ export class RedisOrderService {
    */
   private ordersHashKey(orderSig: string): string {
     return `order:${orderSig}`;
+  }
+
+  /**
+   * @notice Generates the Redis set key for order index.
+   * @param baseSig The base signature (without timestamp).
+   * @returns The Redis set key for the order index.
+   */
+  private ordersIndexKey(baseSig: string): string {
+    return `orderIndex:${baseSig}`;
   }
 }

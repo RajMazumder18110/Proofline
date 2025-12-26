@@ -73,103 +73,108 @@ export class TransfersWorker {
   ): Promise<void> {
     /// Extract the job data
     const payload = job.data;
-    /// Checking if order exists for the given payload
-    const order = await this.orderManager.cache.findOneByPayload({
+    /// Checking if orders exists for the given payload
+    const orders = await this.orderManager.cache.findByPayload({
       to: payload.to,
       from: payload.from,
       erc20: payload.erc20,
       amount: BigInt(payload.value),
       chainId: payload.chainId,
     });
-    /// If no valid order found, drop the job
-    if (!order) return;
+    /// If no valid orders found, drop the job
+    if (!Boolean(orders.length)) return;
 
-    /// Process the order further
-    logger.info(`Processing order.`, { orderId: order.orderId });
-    /// Emit events for verifying status
-    await this.orderEvents.publish({
-      eventName: OrderEvents.ORDER_PROGRESS,
-      orderId: order.orderId,
-      status: OrderStatus.VERIFYING,
-    });
-    /// Update order status to VERIFYING in Redis
-    await this.orderManager.cache.updateOrderStatus(
-      order.signedSig,
-      OrderStatus.VERIFYING
-    );
+    /// Process each order found for the transfer event
+    for (const order of orders) {
+      /// Process the order further
+      logger.info(`Processing order.`, { orderId: order.orderId });
+      /// Emit events for verifying status
+      await this.orderEvents.publish({
+        eventName: OrderEvents.ORDER_PROGRESS,
+        orderId: order.orderId,
+        status: OrderStatus.VERIFYING,
+      });
+      /// Update order status to VERIFYING in Redis
+      await this.orderManager.cache.updateOrderStatus(
+        order.uniqueSignature,
+        OrderStatus.VERIFYING
+      );
 
-    /// Prepare signature
-    const sig = signOrder({
-      to: payload.to,
-      from: payload.from,
-      erc20: payload.erc20,
-      amount: BigInt(payload.value),
-      timestamp: order.timestamp,
-      chainId: payload.chainId,
-    });
+      /// Prepare signature
+      const sig = signOrder({
+        to: payload.to,
+        from: payload.from,
+        erc20: payload.erc20,
+        amount: BigInt(payload.value),
+        timestamp: order.timestamp,
+        chainId: payload.chainId,
+      });
 
-    /// Validate the signature
-    if (sig !== order.signature) {
-      /// Fail the order in Redis
-      await this.orderManager.cache.cancelOrder(
-        order.signedSig,
-        payload.txHash,
-        OrderFailReasons.INVALID_SIGNATURE
+      /// Validate the signature
+      if (sig !== order.signature) {
+        /// Fail the order in Redis
+        await this.orderManager.cache.cancelOrder(
+          order.baseSignature,
+          order.uniqueSignature,
+          payload.txHash,
+          OrderFailReasons.INVALID_SIGNATURE
+        );
+        /// Emit events for status change
+        await this.orderEvents.publish({
+          eventName: OrderEvents.ORDER_PROGRESS,
+          orderId: order.orderId,
+          status: OrderStatus.CANCELLED,
+        });
+        /// Emit events for cancellation
+        await this.orderEvents.publish({
+          eventName: OrderEvents.ORDER_CANCELLED,
+          orderId: order.orderId,
+          status: OrderStatus.CANCELLED,
+          reason: OrderFailReasons.INVALID_SIGNATURE,
+        });
+
+        /// Logging invalid signature attempt
+        logger.warn(`Order cancelled due to invalid signature.`, {
+          orderId: order.orderId,
+          computedSignature: sig,
+          expectedSignature: order.signature,
+        });
+        return;
+      }
+
+      /// Mark order as completed
+      await this.orderManager.cache.completeOrder(
+        order.baseSignature,
+        order.uniqueSignature,
+        payload.txHash
       );
       /// Emit events for status change
       await this.orderEvents.publish({
         eventName: OrderEvents.ORDER_PROGRESS,
         orderId: order.orderId,
-        status: OrderStatus.CANCELLED,
+        status: OrderStatus.COMPLETED,
       });
-      /// Emit events for cancellation
+      /// Emit events for completion
       await this.orderEvents.publish({
-        eventName: OrderEvents.ORDER_CANCELLED,
+        eventName: OrderEvents.ORDER_COMPLETED,
+        status: OrderStatus.COMPLETED,
+        /// Order details
         orderId: order.orderId,
-        status: OrderStatus.CANCELLED,
-        reason: OrderFailReasons.INVALID_SIGNATURE,
+        erc20: order.erc20,
+        from: order.from,
+        to: order.to,
+        amount: order.amount.toString(),
+        timestamp: order.timestamp,
+        chainId: payload.chainId,
+        txHash: payload.txHash,
+        signature: order.signature,
       });
 
-      /// Logging invalid signature attempt
-      logger.warn(`Order cancelled due to invalid signature.`, {
+      /// Logging successful order completion
+      logger.info(`Order completed successfully.`, {
         orderId: order.orderId,
-        computedSignature: sig,
-        expectedSignature: order.signature,
+        txHash: payload.txHash,
       });
-      return;
     }
-
-    /// Mark order as completed
-    await this.orderManager.cache.completeOrder(
-      order.signedSig,
-      payload.txHash
-    );
-    /// Emit events for status change
-    await this.orderEvents.publish({
-      eventName: OrderEvents.ORDER_PROGRESS,
-      orderId: order.orderId,
-      status: OrderStatus.COMPLETED,
-    });
-    /// Emit events for completion
-    await this.orderEvents.publish({
-      eventName: OrderEvents.ORDER_COMPLETED,
-      status: OrderStatus.COMPLETED,
-      /// Order details
-      orderId: order.orderId,
-      erc20: order.erc20,
-      from: order.from,
-      to: order.to,
-      amount: order.amount.toString(),
-      timestamp: order.timestamp,
-      chainId: payload.chainId,
-      txHash: payload.txHash,
-      signature: order.signature,
-    });
-
-    /// Logging successful order completion
-    logger.info(`Order completed successfully.`, {
-      orderId: order.orderId,
-      txHash: payload.txHash,
-    });
   }
 }
