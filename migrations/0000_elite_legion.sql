@@ -5,6 +5,7 @@ CREATE TABLE `orders` (
 	`to` varchar(42) NOT NULL,
 	`amount` bigint NOT NULL,
 	`txHash` varchar(66),
+	`chainId` int NOT NULL,
 	`signature` varchar(512) NOT NULL,
 	`timestamp` bigint unsigned NOT NULL,
 	`error` varchar(255),

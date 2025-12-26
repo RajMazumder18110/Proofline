@@ -1,1 +1,0 @@
-ALTER TABLE `orders` ADD `chainId` int NOT NULL;

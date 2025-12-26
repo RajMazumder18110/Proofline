@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "8880ad3e-345c-4a6c-8ded-6c58206d37e5",
+  "id": "161ba071-6da7-44cd-aca4-df32a6998a3c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "orders": {
@@ -47,6 +47,13 @@
           "type": "varchar(66)",
           "primaryKey": false,
           "notNull": false,
+          "autoincrement": false
+        },
+        "chainId": {
+          "name": "chainId",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
           "autoincrement": false
         },
         "signature": {
