@@ -5,11 +5,11 @@ import { Job, Worker } from "bullmq";
 import { Queues } from "@/queues";
 import { configs } from "@/configs";
 import { logger } from "@/configs/logger";
-import { signOrder } from "@/utils/signature";
 import type { OrderManager } from "@/services/OrderManager";
-import { OrderStatus, OrderFailReasons, OrderEvents } from "@/types/order";
+import { SignatureService } from "@/services/SignatureService";
 import type { OrderEventQueue } from "@/queues/OrderEventQueue";
 import type { TransferEventPublishPayload } from "@/types/erc20";
+import { OrderStatus, OrderFailReasons, OrderEvents } from "@/types/order";
 
 export class TransfersWorker {
   /// Holds the instances.
@@ -101,7 +101,7 @@ export class TransfersWorker {
       );
 
       /// Prepare signature
-      const sig = signOrder({
+      const sig = SignatureService.signOrderWithSignature({
         to: payload.to,
         from: payload.from,
         erc20: payload.erc20,

@@ -1,6 +1,5 @@
 /** @notice Library imports */
 import IORedis from "ioredis";
-
 /// Local imports
 import {
   OrderFailReasons,
@@ -9,7 +8,7 @@ import {
   type GetOrderByPayloadParams,
   type SaveOrderToRedisPayload,
 } from "@/types/order";
-import { signOrderDetailsForRedis } from "@/utils/signature";
+import { SignatureService } from "./SignatureService";
 
 export class RedisOrderService {
   /**
@@ -29,7 +28,7 @@ export class RedisOrderService {
     order: SaveOrderToRedisPayload
   ): Promise<void> {
     /// Generate base signature (without timestamp) for indexing
-    const baseSig = signOrderDetailsForRedis({
+    const baseSig = SignatureService.signOrderWithSelfSignature({
       to: order.to,
       from: order.from,
       erc20: order.erc20,
@@ -38,7 +37,7 @@ export class RedisOrderService {
     });
 
     /// Generate unique signature (with timestamp) for unique storage
-    const uniqueSig = signOrderDetailsForRedis(
+    const uniqueSig = SignatureService.signOrderWithSelfSignature(
       {
         to: order.to,
         from: order.from,
@@ -166,7 +165,7 @@ export class RedisOrderService {
     order: GetOrderByPayloadParams
   ): Promise<FindOneOrderFromRedisPayload[]> {
     /// Generate base signature (without timestamp) for lookup
-    const baseSig = signOrderDetailsForRedis({
+    const baseSig = SignatureService.signOrderWithSelfSignature({
       to: order.to,
       from: order.from,
       erc20: order.erc20,
@@ -211,7 +210,7 @@ export class RedisOrderService {
    */
   public async isValidOrder(order: GetOrderByPayloadParams): Promise<boolean> {
     /// Generate base signature for lookup
-    const baseSig = signOrderDetailsForRedis({
+    const baseSig = SignatureService.signOrderWithSelfSignature({
       to: order.to,
       from: order.from,
       erc20: order.erc20,

@@ -1,7 +1,7 @@
 /** @notice Local imports */
 import { orderManager } from "@/core/clients";
+import { SignatureService } from "@/services/SignatureService";
 import type { CreateOrderPayload } from "@/types/order";
-import { signOrder } from "@/utils/signature";
 import { parseEther } from "ethers";
 
 const payload: CreateOrderPayload = {
@@ -21,7 +21,7 @@ const insertId = await orderManager.createOrder({
   amount: payload.amount,
   chainId: payload.chainId,
   timestamp: payload.timestamp,
-  signature: signOrder(payload),
+  signature: SignatureService.signOrderWithSignature(payload),
 });
 
 console.log("Inserted Order ID:", insertId);
