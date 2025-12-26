@@ -40,18 +40,37 @@ export type FindOneOrderFromRedisPayload = CreateOrderPayload & {
   signedSig: string;
 };
 
-export type OrderEventPayload = {
-  orderId: string;
-  status: OrderStatus;
-  reason?: OrderFailReasons;
-};
-
-export interface OrderPublishEventPayload extends OrderEventPayload {
-  eventName: "order:progress" | "order:completed" | "order:cancelled";
-}
+export type OrderEventPublishPayload =
+  | /// Event for order progress
+  {
+      eventName: "order:progress";
+      orderId: string;
+      status: OrderStatus;
+    }
+  /// Event for order completed
+  | {
+      eventName: "order:completed";
+      status: OrderStatus.COMPLETED;
+      orderId: string;
+      erc20: string;
+      from: string;
+      to: string;
+      amount: string;
+      timestamp: number;
+      chainId: number;
+      txHash: string;
+      signature: string;
+    }
+  /// Event for order cancelled
+  | {
+      eventName: "order:cancelled";
+      status: OrderStatus.CANCELLED;
+      orderId: string;
+      reason: OrderFailReasons;
+    };
 
 export interface OrderEventsListener extends QueueEventsListener {
-  "order:progress": (args: OrderEventPayload, id: string) => void;
-  "order:completed": (args: OrderEventPayload, id: string) => void;
-  "order:cancelled": (args: OrderEventPayload, id: string) => void;
+  "order:progress": (args: OrderEventPublishPayload, id: string) => void;
+  "order:completed": (args: OrderEventPublishPayload, id: string) => void;
+  "order:cancelled": (args: OrderEventPublishPayload, id: string) => void;
 }

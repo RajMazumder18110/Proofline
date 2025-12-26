@@ -25,7 +25,7 @@ export const orderEventQueue = new OrderEventQueue(redisConnection);
 export const erc20Queue = new TransferEventsQueue(redisConnection);
 
 /// events ///
-export const erc20 = new ERC20Events(ERC20_ADDRESS, provider, erc20Queue);
+export const erc20 = new ERC20Events(erc20Queue);
 
 /// managers ///
 export const orderManager = new OrderManager(orderService, redisOrderService);

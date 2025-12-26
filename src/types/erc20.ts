@@ -16,6 +16,12 @@ export type TransferEventPayload = {
   blockNumber: number;
   blockHash: string;
 };
+
+export type TransferEventPublishPayload = TransferEventPayload & {
+  chainId: number;
+  network: string;
+};
+
 export type ERC20EventMap = {
   /// ERC20 specific events
   transfer: [payload: TransferEventPayload];

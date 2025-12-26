@@ -1,11 +1,11 @@
 /** @notice Library imports */
 import { drizzle } from "drizzle-orm/mysql2";
 /// Local imports
+import { configs } from "@/configs";
 import * as schema from "@/database/schemas";
-import { MYSQL_CONNECTION_URL } from "@/configs/env";
 
 /// Database client
-export const database = drizzle(MYSQL_CONNECTION_URL, {
+export const database = drizzle(configs.database.mysqlUrl, {
   schema,
   mode: "default",
 });

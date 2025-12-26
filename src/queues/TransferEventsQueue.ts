@@ -4,11 +4,11 @@ import { Queue } from "bullmq";
 /// Local imports
 import { Queues } from "@/queues";
 import { configs } from "@/configs";
-import type { TransferEventPayload } from "@/types/erc20";
+import type { TransferEventPublishPayload } from "@/types/erc20";
 
 export class TransferEventsQueue {
   /// Holds the instances.
-  private _queue: Queue;
+  private _queue: Queue<TransferEventPublishPayload>;
 
   /**
    * @notice Constructor
@@ -26,10 +26,10 @@ export class TransferEventsQueue {
   /**
    * @notice Enqueues a transfer event payload for processing.
    * @dev Adds the transfer event payload to the queue with a unique job ID.
-   * @param {TransferEventPayload} payload The transfer event payload to enqueue.
+   * @param {TransferEventPublishPayload} payload The transfer event payload to enqueue.
    * @return {Promise<void>} A promise that resolves when the payload is enqueued.
    */
-  public async enqueue(payload: TransferEventPayload): Promise<void> {
+  public async enqueue(payload: TransferEventPublishPayload): Promise<void> {
     await this._queue.add("Transfer", payload, {
       // Use transaction hash as job ID to avoid duplicates
       jobId: payload.txHash,

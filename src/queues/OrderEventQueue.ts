@@ -3,7 +3,7 @@ import IORedis from "ioredis";
 import { QueueEventsProducer, QueueEvents } from "bullmq";
 /// Local imports
 import { Queues } from "@/queues";
-import type { OrderPublishEventPayload } from "@/types/order";
+import type { OrderEventPublishPayload } from "@/types/order";
 import { logger } from "@/configs/logger";
 
 export class OrderEventQueue {
@@ -64,11 +64,7 @@ export class OrderEventQueue {
    * @dev Publishes the given payload to the queue.
    * @param payload The event payload to publish.
    */
-  public async publish(payload: OrderPublishEventPayload): Promise<void> {
+  public async publish(payload: OrderEventPublishPayload): Promise<void> {
     await this._pub.publishEvent(payload);
-    logger.info(
-      `Published order event: ${payload.eventName} for order ID: ${payload.orderId}`,
-      { payload }
-    );
   }
 }

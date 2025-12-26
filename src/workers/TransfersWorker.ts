@@ -6,14 +6,14 @@ import { Queues } from "@/queues";
 import { configs } from "@/configs";
 import { logger } from "@/configs/logger";
 import { signOrder } from "@/utils/signature";
-import type { TransferEventPayload } from "@/types/erc20";
 import type { OrderManager } from "@/services/OrderManager";
 import { OrderStatus, OrderFailReasons } from "@/types/order";
 import type { OrderEventQueue } from "@/queues/OrderEventQueue";
+import type { TransferEventPublishPayload } from "@/types/erc20";
 
 export class TransfersWorker {
   /// Holds the instances.
-  private _worker: Worker;
+  private _worker: Worker<TransferEventPublishPayload>;
 
   /**
    * @notice Constructor
@@ -28,7 +28,7 @@ export class TransfersWorker {
     private orderEvents: OrderEventQueue
   ) {
     /// Worker instance
-    this._worker = new Worker(
+    this._worker = new Worker<TransferEventPublishPayload>(
       Queues.ERC20_TRANSFERS,
       this._execute.bind(this),
       { connection, autorun: false, concurrency: configs.workers.concurrency }
@@ -61,13 +61,13 @@ export class TransfersWorker {
   /**
    * @notice Processes a transfer event payload job.
    * @dev Handles the logic for processing the transfer event payload.
-   * @param {Job<TransferEventPayload>} job The job to process.
+   * @param {Job<TransferEventPublishPayload>} job The job to process.
    * @param {string} token An optional token for job processing.
    * @param {AbortSignal} signal An optional abort signal for job cancellation.
    * @return {Promise<void>} A promise that resolves when the job is processed.
    */
   private async _execute(
-    job: Job<TransferEventPayload>,
+    job: Job<TransferEventPublishPayload>,
     token?: string,
     signal?: AbortSignal
   ): Promise<void> {
@@ -84,6 +84,8 @@ export class TransfersWorker {
     if (!order) return;
 
     /// Process the order further
+    logger.info(`Processing order.`, { orderId: order.orderId });
+    /// Emit events for verifying status
     await this.orderEvents.publish({
       eventName: "order:progress",
       orderId: order.orderId,
@@ -101,10 +103,12 @@ export class TransfersWorker {
 
     /// Validate the signature
     if (sig !== order.signature) {
-      await this.orderDatabase.failOrder(
-        order.id,
-        OrderFailReasons.INVALID_SIGNATURE
-      );
+      /// TODO: Handle invalid signature case
+      /// Mark order as failed due to invalid signature
+      // await this.orderDatabase.failOrder(
+      //   order.id,
+      //   OrderFailReasons.INVALID_SIGNATURE
+      // );
       /// Emit events for status change
       await this.orderEvents.publish({
         eventName: "order:progress",
@@ -116,22 +120,23 @@ export class TransfersWorker {
         eventName: "order:cancelled",
         orderId: order.orderId,
         status: OrderStatus.CANCELLED,
+        reason: OrderFailReasons.INVALID_SIGNATURE,
       });
 
       /// Logging invalid signature attempt
-      logger.warn(
-        `Order ${order.orderId} cancelled due to invalid signature.`,
-        {
-          orderId: order.orderId,
-          computedSignature: sig,
-          expectedSignature: order.signature,
-        }
-      );
+      logger.warn(`Order cancelled due to invalid signature.`, {
+        orderId: order.orderId,
+        computedSignature: sig,
+        expectedSignature: order.signature,
+      });
       return;
     }
 
     /// Mark order as completed
-    await this.orderDatabase.completeOrder(order.id, payload.txHash);
+    // await this.orderDatabase.completeOrder(order.id, payload.txHash);
+    /// TODO: Update order status in order manager
+    /// Mark order as completed in order manager
+
     /// Emit events for status change
     await this.orderEvents.publish({
       eventName: "order:progress",
@@ -141,11 +146,21 @@ export class TransfersWorker {
     /// Emit events for completion
     await this.orderEvents.publish({
       eventName: "order:completed",
-      orderId: order.orderId,
       status: OrderStatus.COMPLETED,
+      /// Order details
+      orderId: order.orderId,
+      erc20: order.erc20,
+      from: order.from,
+      to: order.to,
+      amount: order.amount.toString(),
+      timestamp: order.timestamp,
+      chainId: payload.chainId,
+      txHash: payload.txHash,
+      signature: order.signature,
     });
+
     /// Logging successful order completion
-    logger.info(`Order ${order.orderId} completed successfully.`, {
+    logger.info(`Order completed successfully.`, {
       orderId: order.orderId,
       txHash: payload.txHash,
     });

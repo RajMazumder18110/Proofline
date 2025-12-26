@@ -9,7 +9,7 @@ import {
 import { logger } from "@/configs/logger";
 import { OrderManager } from "@/services/OrderManager";
 import type { OrderEventQueue } from "@/queues/OrderEventQueue";
-import { OrderStatus, type OrderPublishEventPayload } from "@/types/order";
+import { OrderStatus, type OrderEventPublishPayload } from "@/types/order";
 
 export class OrdersController {
   /**
@@ -66,7 +66,7 @@ export class OrdersController {
     }
 
     /// Enqueue order verification event
-    const orderProgressPayload: OrderPublishEventPayload = {
+    const orderProgressPayload: OrderEventPublishPayload = {
       eventName: "order:progress",
       orderId: newOrderId,
       status: OrderStatus.PENDING,
