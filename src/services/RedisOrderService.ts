@@ -25,7 +25,9 @@ export class RedisOrderService {
    * @dev This is a placeholder method and should be implemented with actual Redis logic.
    * @param order The order payload to save.
    */
-  public async saveOrder(order: SaveOrderToRedisPayload): Promise<void> {
+  public async saveOrUpdateOrder(
+    order: SaveOrderToRedisPayload
+  ): Promise<void> {
     /// Generate signature for the order details
     const signedSig = signOrderDetailsForRedis({
       to: order.to,
@@ -203,8 +205,16 @@ export class RedisOrderService {
     if (!results) return settledOrders;
 
     // Process results
-    for (const [_, orderData] of results) {
-      settledOrders.push(orderData as unknown as FindOneOrderFromRedisPayload);
+    for (const [err, orderData] of results) {
+      if (!err) {
+        const data = orderData as unknown as FindOneOrderFromRedisPayload;
+        settledOrders.push({
+          ...data,
+          amount: BigInt(data.amount),
+          chainId: Number(data.chainId),
+          timestamp: Number(data.timestamp),
+        });
+      }
     }
     return settledOrders;
   }
