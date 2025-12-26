@@ -1,5 +1,6 @@
 /** @notice Library imports */
 import { z } from "zod";
+import { isAddress } from "ethers";
 
 /// Schema
 export const configSchema = z.object({
@@ -55,6 +56,20 @@ export const configSchema = z.object({
       .nonnegative()
       .min(1, "Worker concurrency must be at least 1"),
   }),
+
+  /// Contracts
+  contracts: z
+    .array(
+      z.object({
+        chainId: z.number().int().nonnegative().min(1, "Invalid chain ID"),
+        network: z.string().min(1, "Network name is required"),
+        rpcUrl: z.url("Invalid RPC URL"),
+        address: z.string().refine((addr) => isAddress(addr), {
+          message: "Invalid contract address",
+        }),
+      })
+    )
+    .min(1, "At least one contract configuration is required"),
 
   /// Secrets
   secrets: z.object({

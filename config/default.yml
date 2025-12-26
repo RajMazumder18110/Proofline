@@ -8,7 +8,7 @@ application:
 
 database:
   redisUrl: redis://localhost:6379
-  mysqlUrl: mysql://user:password@localhost:3306/proofline_db
+  mysqlUrl: mysql://root:root@localhost:3306/proofline_db
 
 queues:
   defaultJobOptions:
@@ -22,6 +22,16 @@ queues:
 
 workers:
   concurrency: 10
+
+contracts:
+  - chainId: 97
+    network: bsc-testnet
+    rpcUrl: https://data-seed-prebsc-1-s1.binance.org:8545
+    address: "0xD98aFa5e340816A637Bd886D16E82F9C2106bB21"
+  - chainId: 97
+    network: bsc-testnet
+    rpcUrl: https://data-seed-prebsc-1-s1.binance.org:8545
+    address: "0x5757AAC97d0e1FBeD213e4D02b748916D408eAFD"
 
 secrets:
   hmacSignatureSecret: your_hmac_secret_key
