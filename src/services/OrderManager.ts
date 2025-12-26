@@ -33,22 +33,6 @@ export class OrderManager {
 
   /// Public methods ///
   /**
-   * @notice Validates if an order exists.
-   * @dev Checks the Redis store to see if the order is valid.
-   * @param order The order payload to validate.
-   * @returns True if the order is valid, false otherwise.
-   */
-  public async isOrderValid(order: GetOrderByPayloadParams): Promise<boolean> {
-    /// Check if the order exists in Redis
-    return await this.redisService.isValidOrder({
-      to: order.to,
-      from: order.from,
-      erc20: order.erc20,
-      amount: order.amount,
-    });
-  }
-
-  /**
    * @notice Retrieves an order ID by its payload details.
    * @dev Queries the Redis store for the order ID.
    * @param order The order payload to search for.
@@ -63,6 +47,7 @@ export class OrderManager {
       from: order.from,
       erc20: order.erc20,
       amount: order.amount,
+      chainId: order.chainId,
     });
   }
 
@@ -84,17 +69,5 @@ export class OrderManager {
     });
     /// Returning the created order ID
     return createdOrderId;
-  }
-
-  /**
-   * @notice Updates the status of an order in Redis.
-   * @param orderSig The order signature.
-   * @param status
-   */
-  public async updateOrderStatusRedis(
-    orderSig: string,
-    status: OrderStatus
-  ): Promise<void> {
-    await this.redisService.updateOrderStatus(orderSig, status);
   }
 }

@@ -18,12 +18,12 @@ export type Order = typeof orders.$inferSelect;
 
 export type GetOrderByPayloadParams = Pick<
   Order,
-  "erc20" | "from" | "to" | "amount"
+  "erc20" | "from" | "to" | "amount" | "chainId"
 >;
 
 export type OrderSignaturePayload = Pick<
   Order,
-  "erc20" | "from" | "to" | "amount" | "timestamp"
+  "erc20" | "from" | "to" | "amount" | "timestamp" | "chainId"
 >;
 
 export type CreateOrderPayload = Pick<

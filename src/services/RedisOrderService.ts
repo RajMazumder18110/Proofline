@@ -32,6 +32,7 @@ export class RedisOrderService {
       from: order.from,
       erc20: order.erc20,
       amount: order.amount,
+      chainId: order.chainId,
     });
 
     /// Sets the Redis pipeline
@@ -140,6 +141,7 @@ export class RedisOrderService {
       from: order.from,
       erc20: order.erc20,
       amount: order.amount,
+      chainId: order.chainId,
     });
     /// Check if the signature exists in Redis set
     const exists = await this.redis.sismember(
@@ -166,6 +168,7 @@ export class RedisOrderService {
       from: order.from,
       erc20: order.erc20,
       amount: order.amount,
+      chainId: order.chainId,
     });
     /// Check if the signature exists in Redis set
     const exists = await this.redis.sismember(
@@ -173,6 +176,39 @@ export class RedisOrderService {
       signedSig
     );
     return exists === 1;
+  }
+
+  /**
+   * @notice Fetches settled orders from Redis.
+   * @dev Retrieves settled orders from Redis sorted set.
+   * @returns The list of settled orders.
+   */
+  public async fetchSettledOrders(): Promise<FindOneOrderFromRedisPayload[]> {
+    const settledOrders: FindOneOrderFromRedisPayload[] = [];
+    /// Fetch all settled order signatures
+    const settledSigs = await this.redis.zrevrangebyscore(
+      this.ordersSettledSetKey,
+      String(Date.now()), /// Max score
+      String(0), /// Min score
+      "LIMIT",
+      0, /// Offset
+      100 /// Count
+    );
+
+    /// Retrieve each settled order details
+    const pipeline = this.redis.multi();
+    for (const sig of settledSigs) {
+      pipeline.hgetall(this.ordersHashKey(sig));
+    }
+    const results = await pipeline.exec();
+    /// In case of no results, return empty array
+    if (!results) return settledOrders;
+
+    // Process results
+    for (const [_, orderData] of results) {
+      settledOrders.push(orderData as unknown as FindOneOrderFromRedisPayload);
+    }
+    return settledOrders;
   }
 
   /// PRIVATE METHODS ///

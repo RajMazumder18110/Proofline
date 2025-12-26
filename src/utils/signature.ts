@@ -18,6 +18,7 @@ export const signOrder = (payload: OrderSignaturePayload): string => {
     .createHmac("sha512", configs.secrets.hmacSignatureSecret)
     .update(
       JSON.stringify({
+        chainId: payload.chainId,
         to: payload.to.toLowerCase(),
         from: payload.from.toLowerCase(),
         erc20: payload.erc20.toLowerCase(),
@@ -36,12 +37,13 @@ export const signOrder = (payload: OrderSignaturePayload): string => {
  * @returns The HMAC SHA256 signature as a hex string.
  */
 export const signOrderDetailsForRedis = (
-  payload: GetOrderByPayloadParams
+  payload: Omit<OrderSignaturePayload, "timestamp">
 ): string => {
   const sig = crypto
     .createHmac("sha256", configs.secrets.hmacSelfSignatureSecret)
     .update(
       JSON.stringify({
+        chainId: payload.chainId,
         to: payload.to.toLowerCase(),
         from: payload.from.toLowerCase(),
         erc20: payload.erc20.toLowerCase(),

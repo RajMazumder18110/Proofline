@@ -79,6 +79,7 @@ export class TransfersWorker {
       from: payload.from,
       erc20: payload.erc20,
       amount: BigInt(payload.value),
+      chainId: payload.chainId,
     });
     /// If no valid order found, drop the job
     if (!order) return;
@@ -104,6 +105,7 @@ export class TransfersWorker {
       erc20: payload.erc20,
       amount: BigInt(payload.value),
       timestamp: order.timestamp,
+      chainId: payload.chainId,
     });
 
     /// Validate the signature
