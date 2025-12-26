@@ -35,7 +35,7 @@ export const orders = mysqlTable(
     amount: bigint({ mode: "bigint" }).notNull(),
     txHash: varchar({ length: 66 }),
     chainId: int().notNull(),
-    signature: varchar({ length: 512 }).notNull(),
+    signature: varchar({ length: 512 }).notNull().unique(),
     timestamp: bigint({ mode: "number", unsigned: true }).notNull(),
     error: varchar({ length: 255 }),
     status: orderStatusEnum.notNull().default(OrderStatus.PENDING),
@@ -48,7 +48,7 @@ export const orders = mysqlTable(
   /// Indexes ///
   (table) => [
     /// Unique Indexes ///
-    uniqueIndex("orders_tx_hash_idx").on(table.txHash),
+    index("orders_tx_hash_idx").on(table.txHash),
 
     /// Indexes ///
     index("orders_status_idx").on(table.status, table.id),

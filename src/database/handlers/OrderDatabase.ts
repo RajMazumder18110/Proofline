@@ -1,5 +1,5 @@
 /** @notice Library imports */
-import { eq, and } from "drizzle-orm";
+import { eq, and, SQL, sql, inArray } from "drizzle-orm";
 /// Local imports
 import {
   OrderStatus,
@@ -75,6 +75,76 @@ export class OrderDatabase {
       .$returningId();
 
     return newOrder?.id ?? null;
+  }
+
+  /**
+   * @notice Marks multiple orders as completed in the database.
+   * @dev Updates the status and transaction hash of the specified orders.
+   * @param payload The list of orders to mark as completed.
+   * @returns {Promise<void>} A promise that resolves when the orders are marked as completed.
+   */
+  public async markOrdersAsCompleted(
+    payload: Pick<Order, "id" | "txHash">[]
+  ): Promise<void> {
+    const sqlChunks: SQL[] = [];
+    const ids = payload.map((order) => order.id);
+
+    /// Building SQL CASE statements for txHash updates
+    sqlChunks.push(sql`(CASE`);
+    for (const order of payload) {
+      sqlChunks.push(sql`WHEN ${orders.id} = ${order.id} THEN ${order.txHash}`);
+    }
+    sqlChunks.push(sql`END)`);
+    /// Combining SQL chunks
+    const finalSql = sql.join(sqlChunks, sql.raw(" "));
+    /// Executing the update query
+    await database
+      .update(orders)
+      .set({
+        status: OrderStatus.COMPLETED,
+        txHash: finalSql,
+      })
+      .where(
+        and(inArray(orders.id, ids), eq(orders.status, OrderStatus.VERIFYING))
+      );
+  }
+
+  public async markOrdersAsCancelled(
+    payload: Pick<Order, "id" | "txHash" | "error">[]
+  ): Promise<void> {
+    const sqlChunksTxHash: SQL[] = [];
+    const sqlChunksForReason: SQL[] = [];
+    const ids = payload.map((order) => order.id);
+
+    /// Building SQL CASE statements for txHash updates
+    sqlChunksTxHash.push(sql`(CASE`);
+    sqlChunksForReason.push(sql`(CASE`);
+
+    for (const order of payload) {
+      sqlChunksTxHash.push(
+        sql`WHEN ${orders.id} = ${order.id} THEN ${order.txHash}`
+      );
+      sqlChunksForReason.push(
+        sql`WHEN ${orders.id} = ${order.id} THEN ${order.error}`
+      );
+    }
+    sqlChunksTxHash.push(sql`END)`);
+    sqlChunksForReason.push(sql`END)`);
+    /// Combining SQL chunks
+    const finalTxHashSql = sql.join(sqlChunksTxHash, sql.raw(" "));
+    const finalReasonSql = sql.join(sqlChunksForReason, sql.raw(" "));
+
+    /// Executing the update query
+    await database
+      .update(orders)
+      .set({
+        status: OrderStatus.CANCELLED,
+        txHash: finalTxHashSql,
+        error: finalReasonSql,
+      })
+      .where(
+        and(inArray(orders.id, ids), eq(orders.status, OrderStatus.VERIFYING))
+      );
   }
 
   /**

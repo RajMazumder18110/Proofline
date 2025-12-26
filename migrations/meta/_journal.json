@@ -8,6 +8,13 @@
       "when": 1766741106269,
       "tag": "0000_elite_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1766748190636,
+      "tag": "0001_sad_gamma_corps",
+      "breakpoints": true
     }
   ]
 }
